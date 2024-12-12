@@ -1,0 +1,115 @@
+import pandas as pd # Import Necessary Libraries
+import numpy as ny
+import statistics
+import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy import stats
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
+
+# Load in Marquette Dataset-- G.L for Game Log
+gl = pd.read_csv('marquette.csv')
+gl.head()
+# clean dataset: don't need unnamed 2 column or unnamed 23 column (mostly or all NaN)
+print(gl.columns)
+gl = gl.drop("Unnamed: 2", axis='columns')
+gl = gl.drop("Unnamed: 23", axis='columns')
+gl.head()
+# change column names
+gl.rename(columns={'Unnamed: 0':'GameID','Unnamed: 1':'Date','Unnamed: 3':'Opp','Unnamed: 4':'W/L','Unnamed: 5':'Points Scored','Unnamed: 6':'Opp Points'},inplace=True)
+gl.rename(columns={'School':'MU_FGM','School.1':'MU_FGA','School.2':'MU_FG_PCT','School.3':'MU_3PM','School.4':'MU_3PA','School.5':'MU_3PCT','School.6':'MU_FTM','School.7':'MU_FTA','School.8':'MU_FT_PCT',
+                   'School.9':'MU_OFF_RB','School.10':'MU_TRB','School.11':'MU_AST','School.12':'MU_STL','School.13':'MU_BLK','School.14':'MU_TOV','School.15':'MU_PF'},inplace=True)
+gl.rename(columns={'Opponent':'Opp_FGM','Opponent.1':'Opp_FGA','Opponent.2':'Opp_FG_PCT','Opponent.3':'Opp_3PM','Opponent.4':'Opp_3PA','Opponent.5':'Opp_3PCT','Opponent.6':'Opp_FTM','Opponent.7':'Opp_FTA','Opponent.8':'Opp_FT_PCT',
+                   'Opponent.9':'Opp_OFF_RB','Opponent.10':'Opp_TRB','Opponent.11':'Opp_AST','Opponent.12':'Opp_STL','Opponent.13':'Opp_BLK','Opponent.14':'Opp_TOV','Opponent.15':'Opp_PF'},inplace=True)
+print(gl.columns)
+# delete top row
+gl = gl.iloc[1:]
+gl.head(7)
+
+# change all columns except date, opp, and w/l to numerics
+numerics = gl.columns.drop({'Date','Opp','W/L'})
+gl[numerics] = gl[numerics].apply(pd.to_numeric)
+gl.info()
+
+# replace W and L with 0 and 1
+gl['W/L'] = gl.get('W/L').replace('L',1)
+gl['W/L'] = gl.get('W/L').replace('W',0)
+gl['W/L'] = gl.get('W/L').replace('W (1 OT)',0)
+gl.get('W/L').unique()
+
+
+
+
+# %%
+#scale and drop catagorical items that are not nessesary
+scaler = StandardScaler()
+gl[numerics] = scaler.fit_transform(gl[numerics])
+gl = gl.drop(columns = ["GameID", "Opp", "Date"])
+
+df_win = gl[gl["W/L"] == 0]
+df_loss = gl[gl["W/L"] == 1]
+df_win
+df_loss
+
+# %%
+pca_w = PCA(n_components = 2)
+reduced_w = pca_w.fit_transform(df_win)
+
+pca_l = PCA(n_components = 2)
+reduced_l = pca_l.fit_transform(df_loss)
+
+kmeans_w = KMeans(n_clusters = 3, random_state = 99)
+clusters_w = kmeans_w.fit_predict(reduced_w)
+
+kmeans_l = KMeans(n_clusters = 3, random_state = 99)
+clusters_l = kmeans_l.fit_predict(reduced_l)
+
+plt.figure(figsize=(8, 6))
+plt.scatter(reduced_w[:, 0], reduced_w[:, 1], c=clusters_w, cmap='viridis', s=50)
+plt.title('Clustering in Wins')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.colorbar(label='Cluster')
+plt.show()
+
+# Losses
+plt.figure(figsize=(8, 6))
+plt.scatter(reduced_l[:, 0], reduced_l[:, 1], c=clusters_l, cmap='viridis', s=50)
+plt.title('Clustering in Losses')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.colorbar(label='Cluster')
+plt.show()
+
+
+# %%
+#get the principal componants from the clustering
+loadings_w = pd.DataFrame(
+    pca_w.components_,
+    columns=df_win.columns,
+    index=['PC1', 'PC2']  
+)
+
+loadings_l = pd.DataFrame(
+    pca_l.components_,
+    columns=df_loss.columns,
+    index=['PC1', 'PC2']
+)
+
+#plots the pca of each clustering model 
+plt.figure(figsize=(25, 8))
+sns.heatmap(loadings_w, annot=True, cmap='coolwarm', cbar=True)
+plt.title('PCA decomp "WINS"')
+plt.xlabel('features')
+plt.ylabel('principal components')
+plt.show()
+
+plt.figure(figsize=(25, 8))
+sns.heatmap(loadings_l, annot=True, cmap='coolwarm', cbar=True)
+plt.title('PCA decomp "LOSSES" ')
+plt.xlabel('features')
+plt.ylabel('principal components')
+plt.show()

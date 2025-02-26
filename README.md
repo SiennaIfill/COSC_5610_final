@@ -5,7 +5,7 @@ This repository addresses the challenge of optimizing basketball team performanc
 This repo contains the ipynb files and Marquette dataset we used to figure out key statistics on MU basketball games, team, and built a game predictor using logistic regression
 
 ### Contributors:
-Allan Akkathara
-Sienna Ifill
-Nathan Rusch
-Mark Yoingco
+Allan Akkathara,
+Sienna Ifill,
+Nathan Rusch,
+Mark Yoingco.
